@@ -1,30 +1,40 @@
 // 引用linebot SDK
-var linebot = require('linebot');
+const { Client, middleware } = require('@line/bot-sdk');
+
+require('dotenv').config();  // 一定要放在最上面
+
 const express = require('express');
 
-const app = express();
-app.post('/linewebhook', bot.parser());
+const config = {
+  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
+  channelSecret: process.env.CHANNEL_SECRET,
+};
 
-// 用於辨識Line Channel的資訊
-var bot = linebot({ 
-    channelId: process.env.CHANNEL_ID,
-    channelSecret: process.env.CHANNEL_SECRET,
-    channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN
+console.log('process.env.CHANNEL_ACCESS_TOKEN',process.env.CHANNEL_ACCESS_TOKEN)
+const client = new Client(config);
+
+const app = express();
+app.post('/linewebhook',middleware(config) , async (req, res) => {
+  try {
+    const events = req.body.events;
+    await Promise.all(events.map(async (event) => {
+      if (event.type === 'message' && event.message.type === 'text') {
+        await client.replyMessage(event.replyToken, {
+          type: 'text',
+          text: event.message.text + '，我是學你講話的髒髒愛派遣',
+        });
+      }
+    }));
+    res.status(200).end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).end();
+  }
 });
+
 
 const PORT = process.env.PORT || 3000;
 
-console.log('channelId',process.env.CHANNEL_ID,)
-
-// 當有人傳送訊息給Bot時
-bot.on('message', function (event) { 
-    event.reply(`${event.message.text},我是學你講話的髒髒愛派遣`).then( (data) => {
-
-        }).catch( (error) => {})
-});
-// Bot所監聽的webhook路徑與port
-// bot.listen('/linewebhook', PORT, function () { console.log('[BOT已準備就緒]');
-// });
-app.post('/linewebhook', bot.parser());
+console.log('channelId',process.env.CHANNEL_ID)
 
 app.listen(PORT, () => console.log(`Bot running on port ${PORT}`));
